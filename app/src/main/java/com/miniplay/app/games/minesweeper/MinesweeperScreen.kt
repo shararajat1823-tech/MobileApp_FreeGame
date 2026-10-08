@@ -1,5 +1,6 @@
 package com.miniplay.app.games.minesweeper
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -162,6 +163,7 @@ private fun Board(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MineTile(
     cell: MineCell,
