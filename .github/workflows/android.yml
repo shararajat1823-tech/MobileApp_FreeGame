@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # needed to publish the APK to a Release
 
 jobs:
   build:
@@ -40,10 +40,27 @@ jobs:
       - name: Run unit tests
         run: ./gradlew :app:testDebugUnitTest --stacktrace
 
-      - name: Upload debug APK
+      - name: Upload debug APK (build artifact)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: MiniPlay-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: warn
+
+      # Publish the APK to a single, always-current "latest-debug" pre-release so
+      # it has a stable one-tap download link (no zip). Only on the dev branch.
+      - name: Publish APK to latest-debug release
+        if: success() && github.ref == 'refs/heads/claude/gracious-pasteur-veq1g5'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -1)
+          echo "Publishing $APK"
+          # Recreate the release so the download URL stays constant.
+          gh release delete latest-debug --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest-debug "$APK" \
+            --title "MiniPlay — latest debug APK" \
+            --notes "Auto-built debug APK from ${{ github.sha }}. Install on Android (allow installs from unknown sources)." \
+            --prerelease \
+            --target "${{ github.sha }}"
