@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto Backup (Android 11 and below). Room DB and DataStore live under the
+  default data dirs and are backed up automatically; nothing to exclude.
+-->
+<full-backup-content />

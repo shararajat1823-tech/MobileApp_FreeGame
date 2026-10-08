@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      XML colours exist only for things the framework reads before Compose is
+      running (the launcher icon and the splash screen). Every in-app colour
+      lives in the Compose design system: core/ui/theme/Color.kt.
+    -->
+    <color name="brand_violet">#6C4CF1</color>
+    <color name="brand_violet_dark">#120F2B</color>
+    <color name="brand_on_violet">#FFFFFFFF</color>
+</resources>
