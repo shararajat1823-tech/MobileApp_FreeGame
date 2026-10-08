@@ -40,8 +40,10 @@ import com.miniplay.app.domain.usecase.RecordGameResultUseCase
 import com.miniplay.app.games.brickbreaker.BrickBreakerDescriptor
 import com.miniplay.app.games.game2048.Game2048Descriptor
 import com.miniplay.app.games.memorymatch.MemoryMatchDescriptor
+import com.miniplay.app.games.minesweeper.MinesweeperDescriptor
 import com.miniplay.app.games.numberpuzzle.NumberPuzzleDescriptor
 import com.miniplay.app.games.reaction.ReactionDescriptor
+import com.miniplay.app.games.snake.SnakeDescriptor
 import com.miniplay.app.games.tapchallenge.TapChallengeDescriptor
 import com.miniplay.app.games.tictactoe.TicTacToeDescriptor
 import kotlinx.coroutines.CoroutineScope
@@ -78,6 +80,8 @@ class AppContainer(context: Context) {
             Game2048Descriptor,
             BrickBreakerDescriptor,
             TapChallengeDescriptor,
+            SnakeDescriptor,
+            MinesweeperDescriptor,
         ),
     )
 

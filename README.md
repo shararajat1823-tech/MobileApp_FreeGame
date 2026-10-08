@@ -13,7 +13,7 @@ makes adding the eighth game a one-file change.
 
 ## Features
 
-- **7 real games**, each with genuine mechanics (not placeholders):
+- **9 real games**, each with genuine mechanics (not placeholders):
   | Game | What it is | Highlights |
   |------|-----------|------------|
   | ⭕ Tic Tac Toe | 3-in-a-row | PvP + AI with a true **minimax** hard mode (never loses) |
@@ -23,6 +23,8 @@ makes adding the eighth game a one-file change.
   | 🔢 2048 | Merge tiles | swipe controls, undo, win + game-over, tile slide/merge animation |
   | 🧱 Brick Breaker | Arcade paddle/ball | Canvas physics loop, lives, levels, increasing speed |
   | 🎯 Tap Challenge | 30-second tap frenzy | combo multiplier, shrinking targets, accuracy |
+  | 🐍 Snake | Grow and survive | swipe steering, Canvas board, accelerates as you grow |
+  | 💣 Minesweeper | Find every mine | Easy/Medium/Hard, first-tap-safe, flood reveal, long-press to flag |
 - **Home dashboard** — greeting, daily challenge, streak strip, continue-playing,
   popular rail, full catalogue.
 - **Achievements** — 9 achievements, automatic unlocks, app-wide unlock banner.

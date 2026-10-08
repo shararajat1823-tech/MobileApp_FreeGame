@@ -13,4 +13,6 @@ object GameIds {
     const val GAME_2048 = "game2048"
     const val BRICK_BREAKER = "brickbreaker"
     const val TAP_CHALLENGE = "tapchallenge"
+    const val SNAKE = "snake"
+    const val MINESWEEPER = "minesweeper"
 }

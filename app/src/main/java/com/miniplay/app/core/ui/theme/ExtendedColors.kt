@@ -102,5 +102,7 @@ object Accents {
         "game2048" to Sunset,
         "brickbreaker" to Rose,
         "tapchallenge" to Violet,
+        "snake" to Mint,
+        "minesweeper" to Ocean,
     )
 }

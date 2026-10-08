@@ -143,6 +143,27 @@
     <string name="tap_target_description">Target</string>
     <string name="tap_start">Start</string>
 
+    <!-- ============================== Snake ============================= -->
+    <string name="snake_title">Snake</string>
+    <string name="snake_desc">Eat, grow, survive</string>
+    <string name="snake_how_to">Swipe to steer the snake. Eat the food to grow longer and score — but never hit a wall or your own tail. The longer you get, the faster it moves.</string>
+    <string name="snake_length">Length</string>
+    <string name="snake_tap_to_start">Tap to start</string>
+    <string name="snake_board_description">Snake board, score %1$d</string>
+
+    <!-- =========================== Minesweeper ========================== -->
+    <string name="mine_title">Minesweeper</string>
+    <string name="mine_desc">Find every mine</string>
+    <string name="mine_how_to">Tap a tile to reveal it. A number shows how many mines touch that tile. Long-press to place or remove a flag on a suspected mine. Clear every safe tile to win — reveal a mine and it is game over. Your first tap is always safe.</string>
+    <string name="mine_remaining">Mines</string>
+    <string name="mine_cleared">Minefield cleared!</string>
+    <string name="mine_boom">Boom!</string>
+    <string name="mine_cell_hidden">hidden</string>
+    <string name="mine_cell_flagged">flagged</string>
+    <string name="mine_cell_number">%1$d adjacent mines</string>
+    <string name="mine_cell_empty">empty</string>
+    <string name="mine_cell_description">Row %1$d, column %2$d, %3$s</string>
+
     <!-- ========================== Achievements ========================== -->
     <string name="achievements_title">Achievements</string>
     <string name="achievements_unlocked_count">%1$d of %2$d unlocked</string>
