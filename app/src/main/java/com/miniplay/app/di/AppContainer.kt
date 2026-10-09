@@ -117,6 +117,9 @@ class AppContainer(context: Context) {
     val achievementRepository: AchievementRepository =
         AchievementRepositoryImpl(database.achievementStateDao())
 
+    /** Snake-local settings + per-mode best scores (does not touch the global schema). */
+    val snakePrefs = com.miniplay.app.games.snake.SnakePrefs(dataStore)
+
     // --- Use cases ---
     val recordGameResult: RecordGameResultUseCase = RecordGameResultUseCase(
         statsRepository = gameStatsRepository,
