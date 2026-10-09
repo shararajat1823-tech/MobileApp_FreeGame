@@ -191,7 +191,7 @@ private fun SnakeBoard(
         val timeSec = frameNanos / 1_000_000_000f
 
         val intervalNs = (uiState.tickIntervalMillis.coerceAtLeast(1)) * 1_000_000f
-        val t = if (!uiState.started || game.gameOver) {
+        val t = if (!uiState.started || uiState.gameOver) {
             1f
         } else {
             ((frameNanos - tickStartNanos) / intervalNs).coerceIn(0f, 1f)
@@ -230,7 +230,7 @@ private fun SnakeBoard(
                 }
                 Offset(lerpF(from.x, to.x, t), lerpF(from.y, to.y, t))
             }
-            drawSnake(points = points, cell = cell, dir = game.dir, timeSec = timeSec, gameOver = game.gameOver)
+            drawSnake(points = points, cell = cell, dir = game.dir, timeSec = timeSec, gameOver = uiState.gameOver)
         }
     }
 }
