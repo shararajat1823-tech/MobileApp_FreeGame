@@ -15,4 +15,5 @@ object GameIds {
     const val TAP_CHALLENGE = "tapchallenge"
     const val SNAKE = "snake"
     const val MINESWEEPER = "minesweeper"
+    const val LUDO = "ludo"
 }

@@ -39,6 +39,7 @@ import com.miniplay.app.domain.repository.UserRepository
 import com.miniplay.app.domain.usecase.RecordGameResultUseCase
 import com.miniplay.app.games.brickbreaker.BrickBreakerDescriptor
 import com.miniplay.app.games.game2048.Game2048Descriptor
+import com.miniplay.app.games.ludo.LudoDescriptor
 import com.miniplay.app.games.memorymatch.MemoryMatchDescriptor
 import com.miniplay.app.games.minesweeper.MinesweeperDescriptor
 import com.miniplay.app.games.numberpuzzle.NumberPuzzleDescriptor
@@ -82,6 +83,7 @@ class AppContainer(context: Context) {
             TapChallengeDescriptor,
             SnakeDescriptor,
             MinesweeperDescriptor,
+            LudoDescriptor,
         ),
     )
 
@@ -119,6 +121,9 @@ class AppContainer(context: Context) {
 
     /** Snake-local settings + per-mode best scores (does not touch the global schema). */
     val snakePrefs = com.miniplay.app.games.snake.SnakePrefs(dataStore)
+
+    /** Ludo-local settings, stats, match history and saved-match (does not touch the global schema). */
+    val ludoPrefs = com.miniplay.app.games.ludo.LudoPrefs(dataStore)
 
     // --- Use cases ---
     val recordGameResult: RecordGameResultUseCase = RecordGameResultUseCase(

@@ -293,4 +293,64 @@
     <string name="difficulty_easy">Easy</string>
     <string name="difficulty_medium">Medium</string>
     <string name="difficulty_hard">Hard</string>
+    <!-- Ludo -->
+    <string name="ludo_title">Ludo</string>
+    <string name="ludo_desc">Race your four tokens home in the classic board game — against the computer or friends.</string>
+    <string name="ludo_tagline">Roll, race and send rivals home!</string>
+    <string name="ludo_how_to">Roll the die on your turn. Roll a 6 to move a token out of your yard onto the board. Move a token by the exact number rolled, following your colour\'s path around the board and into your home column. Land on an opponent (except on a safe star square) to send it back to its yard. A 6, a capture, or getting a token home earns another roll — but three 6s in a row forfeits your turn. Get all four tokens home to win.</string>
+
+    <string name="ludo_color_red">Red</string>
+    <string name="ludo_color_green">Green</string>
+    <string name="ludo_color_yellow">Yellow</string>
+    <string name="ludo_color_blue">Blue</string>
+
+    <string name="ludo_modes_title">Game modes</string>
+    <string name="ludo_mode_vscpu">Play vs Computer</string>
+    <string name="ludo_mode_vscpu_desc">One human against computer opponents.</string>
+    <string name="ludo_mode_local">Local Multiplayer</string>
+    <string name="ludo_mode_local_desc">2–4 players pass and play on one device.</string>
+    <string name="ludo_mode_practice">Practice</string>
+    <string name="ludo_mode_practice_desc">Learn the ropes against one easy bot.</string>
+
+    <string name="ludo_opponents">Computer opponents</string>
+    <string name="ludo_players">Players</string>
+    <string name="ludo_difficulty">Bot difficulty</string>
+    <string name="ludo_play">Play</string>
+
+    <string name="ludo_resume_title">Resume match</string>
+    <string name="ludo_resume_body">Pick up your saved game where you left off.</string>
+
+    <string name="ludo_settings_title">Rules &amp; settings</string>
+    <string name="ludo_quick_win">Quick game</string>
+    <string name="ludo_quick_win_desc">First token home wins (instead of all four).</string>
+    <string name="ludo_three_sixes">Three sixes forfeit</string>
+    <string name="ludo_three_sixes_desc">Rolling three 6s in a row loses the turn.</string>
+    <string name="ludo_reduced_effects">Reduced effects</string>
+    <string name="ludo_reduced_effects_desc">Faster, lighter animations for budget devices.</string>
+
+    <string name="ludo_stats_title">Your stats</string>
+    <string name="ludo_stat_played">Played</string>
+    <string name="ludo_stat_won">Won</string>
+    <string name="ludo_stat_winrate">Win rate</string>
+    <string name="ludo_stat_captures">Captures</string>
+    <string name="ludo_history_title">Recent matches</string>
+    <string name="ludo_outcome_won">Won</string>
+    <string name="ludo_outcome_lost">Lost</string>
+
+    <string name="ludo_tap_to_roll">Your turn — tap the die to roll</string>
+    <string name="ludo_rolling">Rolling…</string>
+    <string name="ludo_tap_piece">Tap a highlighted piece to move</string>
+    <string name="ludo_thinking">Thinking…</string>
+    <string name="ludo_moving">Moving…</string>
+
+    <string name="ludo_tutorial_title">How to play</string>
+    <string name="ludo_tutorial_body">Tap the die to roll. Roll a 6 to bring a token out. Highlighted tokens can move — tap one. Land on a rival to send it home. Get all four tokens to the centre to win!</string>
+    <string name="ludo_got_it">Got it</string>
+
+    <string name="ludo_paused">Paused</string>
+    <string name="ludo_resume">Resume</string>
+    <string name="ludo_restart">Restart</string>
+    <string name="ludo_menu">Menu</string>
+    <string name="ludo_winner">%1$s wins!</string>
+    <string name="ludo_play_again">Play again</string>
 </resources>
