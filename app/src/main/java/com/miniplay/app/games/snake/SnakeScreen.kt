@@ -19,21 +19,27 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.lerp as lerpF
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.miniplay.app.R
 import com.miniplay.app.core.ui.components.GameMenuItem
@@ -42,11 +48,10 @@ import com.miniplay.app.core.ui.components.GameScaffold
 import com.miniplay.app.core.ui.components.HowToPlayDialog
 import com.miniplay.app.core.ui.components.InlineStat
 import com.miniplay.app.core.ui.components.MiniPlayCard
-import com.miniplay.app.core.ui.theme.GameAccent
 import com.miniplay.app.core.ui.theme.MiniPlayTheme
 import com.miniplay.app.di.rememberViewModel
-import com.miniplay.app.domain.model.GameIds
 import kotlin.math.abs
+import kotlin.math.sin
 
 @Composable
 fun SnakeScreen(onExit: () -> Unit) {
@@ -55,7 +60,6 @@ fun SnakeScreen(onExit: () -> Unit) {
     }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showHowTo by remember { mutableStateOf(false) }
-    val accent = GameAccent.forId(GameIds.SNAKE)
 
     GameScaffold(
         title = stringResource(R.string.snake_title),
@@ -89,8 +93,7 @@ fun SnakeScreen(onExit: () -> Unit) {
                     contentAlignment = Alignment.Center,
                 ) {
                     SnakeBoard(
-                        state = state.game,
-                        accent = accent,
+                        uiState = state,
                         onTurn = viewModel::turn,
                         onTap = viewModel::start,
                         modifier = Modifier.fillMaxSize(),
@@ -135,17 +138,31 @@ fun SnakeScreen(onExit: () -> Unit) {
 
 @Composable
 private fun SnakeBoard(
-    state: SnakeState,
-    accent: GameAccent,
+    uiState: SnakeUiState,
     onTurn: (SnakeDir) -> Unit,
     onTap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val game = uiState.game
     val boardColor = MiniPlayTheme.colors.surfaceSunken
-    val gridLine = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)
-    val snakeBody = accent.start
-    val snakeHead = accent.end
-    val foodColor = MaterialTheme.colorScheme.tertiary
+    val grassTint = Color(0xFF2E9E4F)
+
+    // Per-frame clock that drives smooth interpolation between engine ticks.
+    var frameNanos by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(Unit) {
+        while (true) withFrameNanos { frameNanos = it }
+    }
+
+    // Snapshot the snake at each tick so we can glide from the previous layout
+    // to the current one instead of snapping cell-to-cell.
+    val prevSnake = remember { mutableStateOf(game.snake) }
+    val curSnake = remember { mutableStateOf(game.snake) }
+    var tickStartNanos by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(uiState.tick) {
+        prevSnake.value = curSnake.value
+        curSnake.value = game.snake
+        tickStartNanos = frameNanos
+    }
 
     Canvas(
         modifier = modifier
@@ -168,31 +185,136 @@ private fun SnakeBoard(
                 )
             },
     ) {
-        val cell = size.minDimension / state.cols
-        val inset = cell * 0.08f
-        val radius = CornerRadius(cell * 0.25f)
+        val cols = game.cols
+        val rows = game.rows
+        val cell = size.width / cols
+        val timeSec = frameNanos / 1_000_000_000f
 
-        // Subtle grid.
-        for (i in 1 until state.cols) {
-            drawLine(gridLine, Offset(i * cell, 0f), Offset(i * cell, size.height), strokeWidth = 1f)
-            drawLine(gridLine, Offset(0f, i * cell), Offset(size.width, i * cell), strokeWidth = 1f)
+        val intervalNs = (uiState.tickIntervalMillis.coerceAtLeast(1)) * 1_000_000f
+        val t = if (!uiState.started || game.gameOver) {
+            1f
+        } else {
+            ((frameNanos - tickStartNanos) / intervalNs).coerceIn(0f, 1f)
         }
 
-        // Food.
-        drawCircle(
-            color = foodColor,
-            radius = cell * 0.32f,
-            center = Offset(state.food.x * cell + cell / 2, state.food.y * cell + cell / 2),
+        // Grass field: subtle green checker over the themed board.
+        for (y in 0 until rows) {
+            for (x in 0 until cols) {
+                if ((x + y) % 2 == 0) {
+                    drawRect(
+                        color = grassTint.copy(alpha = 0.07f),
+                        topLeft = Offset(x * cell, y * cell),
+                        size = Size(cell, cell),
+                    )
+                }
+            }
+        }
+
+        // Food apple with a gentle pulse.
+        drawApple(
+            center = Offset((game.food.x + 0.5f) * cell, (game.food.y + 0.5f) * cell),
+            baseRadius = cell * 0.34f,
+            timeSec = timeSec,
         )
 
-        // Snake (head brighter).
-        state.snake.forEachIndexed { i, c ->
-            drawRoundRect(
-                color = if (i == 0) snakeHead else snakeBody,
-                topLeft = Offset(c.x * cell + inset, c.y * cell + inset),
-                size = Size(cell - inset * 2, cell - inset * 2),
-                cornerRadius = radius,
-            )
+        // Interpolated snake body.
+        val cur = curSnake.value
+        val prev = prevSnake.value
+        if (cur.isNotEmpty()) {
+            val points = cur.indices.map { i ->
+                val to = Offset((cur[i].x + 0.5f) * cell, (cur[i].y + 0.5f) * cell)
+                val from = if (i < prev.size) {
+                    Offset((prev[i].x + 0.5f) * cell, (prev[i].y + 0.5f) * cell)
+                } else {
+                    to
+                }
+                Offset(lerpF(from.x, to.x, t), lerpF(from.y, to.y, t))
+            }
+            drawSnake(points = points, cell = cell, dir = game.dir, timeSec = timeSec, gameOver = game.gameOver)
         }
     }
+}
+
+/** Draws a smooth, tapering snake with a detailed head, eyes and a flicking tongue. */
+private fun DrawScope.drawSnake(
+    points: List<Offset>,
+    cell: Float,
+    dir: SnakeDir,
+    timeSec: Float,
+    gameOver: Boolean,
+) {
+    val n = points.size
+    if (n == 0) return
+
+    val headR = cell * 0.46f
+    val tailR = cell * 0.24f
+    val headColor = if (gameOver) Color(0xFFD64545) else Color(0xFF72D873)
+    val tailColor = if (gameOver) Color(0xFF9E2B2B) else Color(0xFF2E9E4F)
+    val outline = if (gameOver) Color(0xFF6B1B1B) else Color(0xFF1B6B36)
+
+    fun frac(i: Int) = if (n <= 1) 0f else i.toFloat() / (n - 1)
+    fun radiusAt(i: Int) = lerpF(headR, tailR, frac(i))
+    fun colorAt(i: Int) = lerp(headColor, tailColor, frac(i))
+
+    // Dark outline pass for depth.
+    for (i in 1 until n) {
+        drawLine(outline, points[i - 1], points[i], strokeWidth = radiusAt(i) * 2 + cell * 0.08f, cap = StrokeCap.Round)
+    }
+    for (i in 0 until n) drawCircle(outline, radiusAt(i) + cell * 0.04f, points[i])
+
+    // Body pass.
+    for (i in 1 until n) {
+        drawLine(colorAt(i), points[i - 1], points[i], strokeWidth = radiusAt(i - 1) + radiusAt(i), cap = StrokeCap.Round)
+    }
+    for (i in 0 until n) drawCircle(colorAt(i), radiusAt(i), points[i])
+
+    // Glossy highlight running along the back.
+    for (i in 0 until n) {
+        drawCircle(Color.White.copy(alpha = 0.12f), radiusAt(i) * 0.5f, points[i] + Offset(0f, -radiusAt(i) * 0.35f))
+    }
+
+    // --- Head details ---
+    val head = points[0]
+    val d = Offset(dir.dx.toFloat(), dir.dy.toFloat())
+    val perp = Offset(-d.y, d.x)
+
+    val eyeBase = head + d * (headR * 0.2f)
+    val eyeR = headR * 0.27f
+    val pupilR = headR * 0.14f
+    for (s in listOf(-1f, 1f)) {
+        val ec = eyeBase + perp * (headR * 0.5f * s)
+        drawCircle(Color.White, eyeR, ec)
+        drawCircle(Color(0xFF17241B), pupilR, ec + d * (eyeR * 0.35f))
+    }
+
+    // Forked tongue, flicking in and out.
+    if (!gameOver) {
+        val flick = (sin(timeSec * 9.0).toFloat() * 0.5f + 0.5f)
+        if (flick > 0.55f) {
+            val tongue = Color(0xFFE5484D)
+            val base = head + d * (headR * 0.95f)
+            val tip = base + d * (cell * 0.45f * flick)
+            val fork = perp * (cell * 0.12f)
+            drawLine(tongue, base, tip, strokeWidth = cell * 0.06f, cap = StrokeCap.Round)
+            drawLine(tongue, tip, tip + d * (cell * 0.12f) + fork, strokeWidth = cell * 0.05f, cap = StrokeCap.Round)
+            drawLine(tongue, tip, tip + d * (cell * 0.12f) - fork, strokeWidth = cell * 0.05f, cap = StrokeCap.Round)
+        }
+    }
+}
+
+/** A glossy apple that gently pulses. */
+private fun DrawScope.drawApple(center: Offset, baseRadius: Float, timeSec: Float) {
+    val pulse = 1f + 0.08f * sin(timeSec * 4.0).toFloat()
+    val r = baseRadius * pulse
+    drawCircle(Color(0xFFB4242A), r, center)
+    drawCircle(Color(0xFFE5484D), r * 0.86f, center)
+    drawCircle(Color.White.copy(alpha = 0.5f), r * 0.22f, center + Offset(-r * 0.3f, -r * 0.32f))
+    drawLine(
+        Color(0xFF6D4C41),
+        center + Offset(0f, -r * 0.8f),
+        center + Offset(r * 0.14f, -r * 1.3f),
+        strokeWidth = r * 0.14f,
+        cap = StrokeCap.Round,
+    )
+    drawCircle(Color(0xFF66BB6A), r * 0.22f, center + Offset(r * 0.36f, -r * 1.15f))
 }

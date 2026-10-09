@@ -22,6 +22,10 @@ data class SnakeUiState(
     val game: SnakeState,
     val started: Boolean = false,
     val bestScore: Long = 0,
+    /** Increments once per engine step; the UI uses it to detect a new tick. */
+    val tick: Long = 0L,
+    /** Current step interval, so the UI can interpolate motion smoothly. */
+    val tickIntervalMillis: Long = 200L,
 ) {
     val gameOver: Boolean get() = game.status == SnakeStatus.GAME_OVER
 }
@@ -57,7 +61,7 @@ class SnakeViewModel(
         loopJob?.cancel()
         loopJob = null
         resultRecorded = false
-        _uiState.update { it.copy(game = SnakeEngine.newGame(), started = false) }
+        _uiState.update { it.copy(game = SnakeEngine.newGame(), started = false, tick = 0L) }
     }
 
     fun turn(dir: SnakeDir) {
@@ -81,7 +85,9 @@ class SnakeViewModel(
         val prev = _uiState.value.game
         if (prev.status != SnakeStatus.RUNNING) return
         val next = SnakeEngine.step(prev)
-        _uiState.update { it.copy(game = next) }
+        _uiState.update {
+            it.copy(game = next, tick = it.tick + 1, tickIntervalMillis = intervalMillis(next.length))
+        }
 
         if (next.score > prev.score) {
             soundManager.play(SoundEffect.CORRECT)
