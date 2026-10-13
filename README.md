@@ -65,6 +65,10 @@ Key decisions:
 
 ## Building
 
+> **Just want to install and play, or run it on your PC?** See
+> **[RUNNING.md](RUNNING.md)** for step-by-step instructions (install the APK on
+> a phone, or set up Android Studio and press Run).
+
 Open the project in **Android Studio** (Koala or newer) and run the `app`
 configuration, or from the command line:
 
