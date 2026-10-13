@@ -24,10 +24,14 @@ data class MinesweeperUiState(
     val elapsedMillis: Long = 0L,
     val bestScore: Long = 0L,
     val finalScore: Int? = null,
+    /** Index the current hint is pointing at, or null. Transient — clears itself. */
+    val hintIndex: Int? = null,
+    val hintsUsed: Int = 0,
 ) {
     val won: Boolean get() = game.status == MineStatus.WON
     val lost: Boolean get() = game.status == MineStatus.LOST
     val finished: Boolean get() = game.isOver
+    val canHint: Boolean get() = !game.isOver
 }
 
 /**
@@ -46,6 +50,7 @@ class MinesweeperViewModel(
     val uiState = _uiState.asStateFlow()
 
     private var timerJob: Job? = null
+    private var hintJob: Job? = null
     private var timerStarted = false
     private var resultRecorded = false
 
@@ -64,11 +69,37 @@ class MinesweeperViewModel(
 
     fun newGame() {
         timerJob?.cancel()
+        hintJob?.cancel()
         timerStarted = false
         resultRecorded = false
         val difficulty = _uiState.value.difficulty
         _uiState.update {
-            it.copy(game = newBoard(difficulty), elapsedMillis = 0L, finalScore = null)
+            it.copy(
+                game = newBoard(difficulty),
+                elapsedMillis = 0L,
+                finalScore = null,
+                hintIndex = null,
+                hintsUsed = 0,
+            )
+        }
+    }
+
+    /**
+     * Highlights a guaranteed-safe covered cell for the player to reveal. It never
+     * reveals the cell itself and never points at a mine (see [MinesweeperEngine.hint]).
+     * The highlight clears after a few seconds or as soon as the player acts.
+     */
+    fun onHint() {
+        val current = _uiState.value
+        if (current.game.isOver) return
+        val index = MinesweeperEngine.hint(current.game) ?: return
+        soundManager.play(SoundEffect.CLICK)
+        hapticManager.perform(HapticFeedbackType.LIGHT)
+        _uiState.update { it.copy(hintIndex = index, hintsUsed = it.hintsUsed + 1) }
+        hintJob?.cancel()
+        hintJob = viewModelScope.launch {
+            delay(3500)
+            _uiState.update { if (it.hintIndex == index) it.copy(hintIndex = null) else it }
         }
     }
 
@@ -77,7 +108,7 @@ class MinesweeperViewModel(
         if (current.game.isOver) return
         startTimer()
         val next = MinesweeperEngine.reveal(current.game, index)
-        _uiState.update { it.copy(game = next) }
+        _uiState.update { it.copy(game = next, hintIndex = null) }
         when (next.status) {
             MineStatus.LOST -> {
                 soundManager.play(SoundEffect.GAME_OVER)
@@ -131,9 +162,12 @@ class MinesweeperViewModel(
                     won = won,
                     difficulty = _uiState.value.difficulty,
                     durationMillis = _uiState.value.elapsedMillis,
-                    flawless = won, // a clean clear hits no mine
+                    flawless = won && _uiState.value.hintsUsed == 0, // a clean, unaided clear
                     completed = true,
-                    metrics = mapOf("timeSec" to elapsedSeconds.toLong()),
+                    metrics = mapOf(
+                        "timeSec" to elapsedSeconds.toLong(),
+                        "hints" to _uiState.value.hintsUsed.toLong(),
+                    ),
                 ),
             )
         }

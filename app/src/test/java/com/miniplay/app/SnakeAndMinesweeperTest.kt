@@ -185,4 +185,37 @@ class MinesweeperEngineTest {
         assertEquals(setOf(1, 3, 4), MinesweeperEngine.neighbors(0, 3, 3).toSet())
         assertEquals(setOf(0, 1, 2, 3, 5, 6, 7, 8), MinesweeperEngine.neighbors(4, 3, 3).toSet())
     }
+
+    @Test fun hintBeforeFirstRevealPointsAtCentre() {
+        val base = MinesweeperEngine.newGame(9, 9, 10)
+        assertEquals(base.index(4, 4), MinesweeperEngine.hint(base))
+    }
+
+    @Test fun hintReturnsASafeCoveredCellNeverAMine() {
+        // 4x4, single mine at 0. Reveal a numbered cell (no flood) so the board stays in play.
+        val base = MinesweeperEngine.newGame(4, 4, 1)
+        val board = MinesweeperEngine.reveal(MinesweeperEngine.withMines(base, setOf(0)), index = 5, random = Random(1))
+        assertEquals(MineStatus.PLAYING, board.status)
+        val h = MinesweeperEngine.hint(board)
+        assertTrue(h != null, "a hint should be available")
+        val cell = board.cells[h!!]
+        assertFalse(cell.isMine, "a hint must never point at a mine")
+        assertFalse(cell.revealed, "a hint must point at a covered cell")
+    }
+
+    @Test fun hintNeverSuggestsAMineEvenWithWrongFlags() {
+        val base = MinesweeperEngine.newGame(4, 4, 1)
+        var board = MinesweeperEngine.reveal(MinesweeperEngine.withMines(base, setOf(0)), index = 5, random = Random(1))
+        board = MinesweeperEngine.toggleFlag(board, 1) // a wrong flag on a safe cell
+        val h = MinesweeperEngine.hint(board)
+        assertTrue(h != null)
+        assertFalse(board.cells[h!!].isMine)
+    }
+
+    @Test fun hintIsNullWhenGameOver() {
+        val base = MinesweeperEngine.newGame(3, 3, 1)
+        val lost = MinesweeperEngine.reveal(MinesweeperEngine.withMines(base, setOf(4)), index = 4, random = Random(1))
+        assertEquals(MineStatus.LOST, lost.status)
+        assertTrue(MinesweeperEngine.hint(lost) == null)
+    }
 }

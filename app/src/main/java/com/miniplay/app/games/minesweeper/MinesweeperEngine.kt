@@ -90,6 +90,40 @@ object MinesweeperEngine {
         return state.copy(cells = updated)
     }
 
+    /**
+     * Suggests a covered cell that is guaranteed safe to reveal, or null if none
+     * can be offered. It prefers a cell logically implied safe by an already
+     * satisfied number (its adjacent count equals its flagged neighbours), then
+     * falls back to any covered non-mine cell. A suggestion is always filtered to
+     * be a non-mine, so a hint can never detonate even if the player's flags are
+     * wrong. Before the first reveal it points at the centre, which is always safe.
+     */
+    fun hint(state: MinesweeperState): Int? {
+        if (state.isOver) return null
+        if (!state.minesPlaced) return state.index(state.rows / 2, state.cols / 2)
+
+        // 1) A satisfied number proves its remaining covered neighbours are safe.
+        for (i in state.cells.indices) {
+            val cell = state.cells[i]
+            if (!cell.revealed || cell.isMine || cell.adjacent == 0) continue
+            val nbrs = neighbors(i, state.rows, state.cols)
+            val flagged = nbrs.count { state.cells[it].flagged }
+            if (flagged == cell.adjacent) {
+                val safe = nbrs.firstOrNull {
+                    val n = state.cells[it]
+                    !n.revealed && !n.flagged && !n.isMine
+                }
+                if (safe != null) return safe
+            }
+        }
+
+        // 2) Fallback: any covered, unflagged, non-mine cell is safe to reveal.
+        return state.cells.indices.firstOrNull { i ->
+            val c = state.cells[i]
+            !c.revealed && !c.flagged && !c.isMine
+        }
+    }
+
     /** Test/explicit seam: build a PLAYING board with specific mines already placed. */
     fun withMines(state: MinesweeperState, mines: Set<Int>): MinesweeperState {
         val cells = buildCells(state.rows, state.cols, mines)

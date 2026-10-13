@@ -189,6 +189,8 @@
     <string name="mine_desc">Find every mine</string>
     <string name="mine_how_to">Tap a tile to reveal it. A number shows how many mines touch that tile. Long-press to place or remove a flag on a suspected mine. Clear every safe tile to win — reveal a mine and it is game over. Your first tap is always safe.</string>
     <string name="mine_remaining">Mines</string>
+    <string name="mine_hint">💡 Hint</string>
+    <string name="mine_hint_count">💡 Hint (%1$d used)</string>
     <string name="mine_cleared">Minefield cleared!</string>
     <string name="mine_boom">Boom!</string>
     <string name="mine_cell_hidden">hidden</string>

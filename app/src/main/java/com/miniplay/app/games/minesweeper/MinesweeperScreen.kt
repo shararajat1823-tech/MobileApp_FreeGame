@@ -1,5 +1,10 @@
 package com.miniplay.app.games.minesweeper
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,6 +47,7 @@ import com.miniplay.app.core.ui.components.DifficultySelector
 import com.miniplay.app.core.ui.components.GameMenuItem
 import com.miniplay.app.core.ui.components.GameResultOverlay
 import com.miniplay.app.core.ui.components.GameScaffold
+import com.miniplay.app.core.ui.components.GhostButton
 import com.miniplay.app.core.ui.components.HowToPlayDialog
 import com.miniplay.app.core.ui.components.InlineStat
 import com.miniplay.app.core.ui.components.MiniPlayCard
@@ -87,8 +93,19 @@ fun MinesweeperScreen(onExit: () -> Unit) {
                         InlineStat(formatDuration(state.elapsedMillis), stringResource(R.string.game_time))
                     }
                 }
+                GhostButton(
+                    text = if (state.hintsUsed > 0) {
+                        stringResource(R.string.mine_hint_count, state.hintsUsed)
+                    } else {
+                        stringResource(R.string.mine_hint)
+                    },
+                    onClick = viewModel::onHint,
+                    enabled = state.canHint,
+                    modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp),
+                )
                 Board(
                     state = state.game,
+                    hintIndex = state.hintIndex,
                     onReveal = viewModel::onReveal,
                     onFlag = viewModel::onFlag,
                     modifier = Modifier
@@ -131,10 +148,19 @@ fun MinesweeperScreen(onExit: () -> Unit) {
 @Composable
 private fun Board(
     state: MinesweeperState,
+    hintIndex: Int?,
     onReveal: (Int) -> Unit,
     onFlag: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // One shared pulse drives the single highlighted hint tile.
+    val transition = rememberInfiniteTransition(label = "hint")
+    val hintPulse by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
+        label = "hintPulse",
+    )
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
@@ -151,6 +177,8 @@ private fun Board(
                         lost = state.status == MineStatus.LOST,
                         row = r,
                         col = c,
+                        hinted = index == hintIndex,
+                        hintPulse = hintPulse,
                         onReveal = { onReveal(index) },
                         onFlag = { onFlag(index) },
                         modifier = Modifier
@@ -170,6 +198,8 @@ private fun MineTile(
     lost: Boolean,
     row: Int,
     col: Int,
+    hinted: Boolean,
+    hintPulse: Float,
     onReveal: () -> Unit,
     onFlag: () -> Unit,
     modifier: Modifier = Modifier,
@@ -177,6 +207,7 @@ private fun MineTile(
     val hiddenColor = MaterialTheme.colorScheme.surfaceContainerLowest
     val revealedColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
     val mineColor = MaterialTheme.colorScheme.errorContainer
+    val hintColor = MaterialTheme.colorScheme.tertiary
 
     val stateDesc = when {
         cell.flagged -> stringResource(R.string.mine_cell_flagged)
@@ -187,7 +218,9 @@ private fun MineTile(
     }
     val desc = stringResource(R.string.mine_cell_description, row + 1, col + 1, stateDesc)
 
+    val showHint = hinted && !cell.revealed
     val background = when {
+        showHint -> hintColor.copy(alpha = 0.18f + hintPulse * 0.22f)
         !cell.revealed -> hiddenColor
         cell.isMine -> mineColor
         else -> revealedColor
@@ -198,8 +231,11 @@ private fun MineTile(
             .clip(RoundedCornerShape(6.dp))
             .background(background)
             .then(
-                if (!cell.revealed) Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
-                else Modifier,
+                when {
+                    showHint -> Modifier.border(2.dp, hintColor.copy(alpha = 0.5f + hintPulse * 0.5f), RoundedCornerShape(6.dp))
+                    !cell.revealed -> Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
+                    else -> Modifier
+                },
             )
             .combinedClickable(
                 enabled = !cell.revealed,
