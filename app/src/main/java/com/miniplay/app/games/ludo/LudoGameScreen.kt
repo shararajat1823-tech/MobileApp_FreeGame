@@ -7,7 +7,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,29 +18,30 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,8 +52,10 @@ import com.miniplay.app.core.ui.components.GhostButton
 import com.miniplay.app.core.ui.components.MiniPlayCard
 import com.miniplay.app.core.ui.components.PrimaryButton
 import com.miniplay.app.core.ui.modifier.bounceClick
-import com.miniplay.app.core.ui.theme.MiniPlayTheme
 import kotlinx.coroutines.flow.SharedFlow
+
+private val GOLD = Color(0xFFFFC53D)
+private val CIRCLE_BTN = Color(0xFF3C4EA8)
 
 @Composable
 fun LudoGameScreen(
@@ -65,45 +70,98 @@ fun LudoGameScreen(
     onDismissTutorial: () -> Unit,
 ) {
     val game = state.game ?: return
-    Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize()) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(LudoColors.bgTop, LudoColors.bgBottom))),
+    ) {
+        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            // Top bar.
             Row(
-                Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onMenu) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.game_back))
+                CircleButton(onClick = onMenu) {
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.game_back), tint = Color.White)
                 }
-                Text(
-                    stringResource(R.string.ludo_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = onPause, enabled = state.winner == null) {
-                    Icon(Icons.Rounded.Pause, contentDescription = stringResource(R.string.game_pause))
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("👑", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.ludo_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Black,
+                        color = GOLD,
+                    )
+                }
+                CircleButton(onClick = onPause, enabled = state.winner == null) {
+                    Icon(Icons.Rounded.Pause, contentDescription = stringResource(R.string.game_pause), tint = Color.White)
                 }
             }
 
-            PlayerStrip(state)
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = MiniPlayTheme.spacing.screen, vertical = 8.dp),
-                contentAlignment = Alignment.Center,
+            // Top players: Red (left), Green (right).
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                LudoBoardView(
-                    state = state,
-                    moveAnims = moveAnims,
-                    onTokenTap = onTokenTap,
-                    modifier = Modifier.fillMaxWidth().widthIn(max = 460.dp).aspectRatio(1f),
-                )
+                PlayerPanel(state, LudoColor.RED, Modifier.weight(1f))
+                PlayerPanel(state, LudoColor.GREEN, Modifier.weight(1f))
             }
 
-            Spacer(Modifier.weight(1f))
-            TurnBar(state = state, onRoll = onRoll)
-            Spacer(Modifier.size(12.dp))
+            // Board inside a raised frame.
+            Box(Modifier.fillMaxWidth().weight(1f).padding(10.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 460.dp)
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF2A3B86))
+                        .padding(7.dp),
+                ) {
+                    LudoBoardView(
+                        state = state,
+                        moveAnims = moveAnims,
+                        onTokenTap = onTokenTap,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+
+            // Bottom players: Blue (left), Yellow (right).
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PlayerPanel(state, LudoColor.BLUE, Modifier.weight(1f))
+                PlayerPanel(state, LudoColor.YELLOW, Modifier.weight(1f))
+            }
+
+            // Bottom dice bar.
+            Column(
+                Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    turnPrompt(state),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.85f),
+                    textAlign = TextAlign.Center,
+                )
+                DiceButton(
+                    face = state.diceFace,
+                    rolling = state.diceRolling,
+                    enabled = state.canRoll,
+                    color = LudoColors.of(game.currentColor),
+                    onRoll = onRoll,
+                )
+                Text(
+                    stringResource(R.string.ludo_roll_dice),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (state.canRoll) Color.White else Color.White.copy(alpha = 0.5f),
+                )
+            }
         }
 
         TutorialOverlay(visible = state.showTutorial && state.winner == null, onDismiss = onDismissTutorial)
@@ -113,51 +171,85 @@ fun LudoGameScreen(
 }
 
 @Composable
-private fun PlayerStrip(state: LudoUiState) {
+private fun CircleButton(onClick: () -> Unit, enabled: Boolean = true, content: @Composable () -> Unit) {
+    Box(
+        Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(CIRCLE_BTN)
+            .alpha(if (enabled) 1f else 0.5f)
+            .then(if (enabled) Modifier.bounceClick(onClick = onClick) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) { content() }
+}
+
+@Composable
+private fun PlayerPanel(state: LudoUiState, color: LudoColor, modifier: Modifier = Modifier) {
     val game = state.game ?: return
+    val active = color in game.players
+    val isCurrent = active && color == game.currentColor && state.winner == null
+    val seat = state.seats.firstOrNull { it.color == color }
+    val isBot = seat?.isBot ?: false
+    val home = if (active) game.tokensHome(color) else 0
+    val c = LudoColors.of(color)
+
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = MiniPlayTheme.spacing.screen),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier
+            .alpha(if (active) 1f else 0.4f)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Brush.horizontalGradient(listOf(c, LudoColors.dark(color))))
+            .then(if (isCurrent) Modifier.border(3.dp, GOLD, RoundedCornerShape(14.dp)) else Modifier)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        state.seats.forEach { seat ->
-            val isCurrent = seat.color == game.currentColor && state.winner == null
-            PlayerChip(
-                seat = seat,
-                tokensHome = game.tokensHome(seat.color),
-                isCurrent = isCurrent,
-                modifier = Modifier.weight(1f),
+        Box(contentAlignment = Alignment.Center) {
+            Box(
+                Modifier.size(38.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.92f))
+                    .border(2.dp, LudoColors.dark(color), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("👤", style = MaterialTheme.typography.titleMedium)
+            }
+            if (isCurrent) {
+                Text("👑", style = MaterialTheme.typography.labelMedium, modifier = Modifier.align(Alignment.TopStart).offset(x = (-6).dp, y = (-10).dp))
+            }
+        }
+        Spacer(Modifier.size(8.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                stringResource(colorNameRes(color)),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
             )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("🏠 $home/4", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.95f))
+                if (active) {
+                    Text(
+                        if (isBot) "CPU" else "You",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.7f),
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun PlayerChip(seat: Seat, tokensHome: Int, isCurrent: Boolean, modifier: Modifier = Modifier) {
-    val color = LudoColors.of(seat.color)
-    Column(
-        modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (isCurrent) color.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceContainerHighest)
-            .then(if (isCurrent) Modifier.border(2.dp, color, RoundedCornerShape(12.dp)) else Modifier)
-            .padding(vertical = 6.dp, horizontal = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(Modifier.size(16.dp).clip(CircleShape).background(color))
-        Spacer(Modifier.size(2.dp))
-        Text(
-            seatLabel(seat),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
-        Text("🏠 $tokensHome/4", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun turnPrompt(state: LudoUiState): String {
+    val game = state.game ?: return ""
+    val name = stringResource(colorNameRes(game.currentColor))
+    return when {
+        state.winner != null -> ""
+        state.animating -> stringResource(R.string.ludo_moving)
+        game.phase == LudoPhase.AWAIT_ROLL && state.isCurrentHuman -> stringResource(R.string.ludo_your_turn, name)
+        game.phase == LudoPhase.AWAIT_ROLL -> stringResource(R.string.ludo_rolling)
+        game.phase == LudoPhase.AWAIT_MOVE && state.isCurrentHuman -> stringResource(R.string.ludo_tap_piece)
+        game.phase == LudoPhase.AWAIT_MOVE -> stringResource(R.string.ludo_thinking)
+        else -> ""
     }
-}
-
-@Composable
-private fun seatLabel(seat: Seat): String {
-    val colorName = stringResource(colorNameRes(seat.color))
-    return if (seat.isBot) "$colorName 🤖" else colorName
 }
 
 private fun colorNameRes(color: LudoColor): Int = when (color) {
@@ -168,79 +260,40 @@ private fun colorNameRes(color: LudoColor): Int = when (color) {
 }
 
 @Composable
-private fun TurnBar(state: LudoUiState, onRoll: () -> Unit) {
-    val game = state.game ?: return
-    val color = LudoColors.of(game.currentColor)
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = MiniPlayTheme.spacing.screen),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        LudoDie(
-            face = state.diceFace,
-            rolling = state.diceRolling,
-            enabled = state.canRoll,
-            color = color,
-            onRoll = onRoll,
-        )
-        Column(Modifier.weight(1f)) {
-            Text(
-                stringResource(colorNameRes(game.currentColor)),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = color,
-            )
-            Text(
-                turnPrompt(state),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun turnPrompt(state: LudoUiState): String {
-    val game = state.game ?: return ""
-    return when {
-        state.animating -> stringResource(R.string.ludo_moving)
-        game.phase == LudoPhase.AWAIT_ROLL && state.isCurrentHuman -> stringResource(R.string.ludo_tap_to_roll)
-        game.phase == LudoPhase.AWAIT_ROLL -> stringResource(R.string.ludo_rolling)
-        game.phase == LudoPhase.AWAIT_MOVE && state.isCurrentHuman -> stringResource(R.string.ludo_tap_piece)
-        game.phase == LudoPhase.AWAIT_MOVE -> stringResource(R.string.ludo_thinking)
-        else -> ""
-    }
-}
-
-@Composable
-private fun LudoDie(face: Int, rolling: Boolean, enabled: Boolean, color: Color, onRoll: () -> Unit) {
-    val scale by animateFloatAsState(if (enabled && !rolling) 1.06f else 1f, label = "dieScale")
-    val rotation by animateFloatAsState(if (rolling) 18f else 0f, label = "dieRot")
+private fun DiceButton(face: Int, rolling: Boolean, enabled: Boolean, color: Color, onRoll: () -> Unit) {
+    val scale by animateFloatAsState(if (enabled && !rolling) 1.07f else 1f, label = "dieScale")
+    val rotation by animateFloatAsState(if (rolling) 22f else 0f, label = "dieRot")
     Box(
         Modifier
-            .size(60.dp)
+            .size(78.dp)
             .scale(scale)
             .rotate(rotation)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.White)
-            .border(2.dp, if (enabled) color else MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
+            .clip(CircleShape)
+            .background(Brush.radialGradient(listOf(Color(0xFFE23B3B), Color(0xFF9B1C2B))))
+            .border(3.dp, GOLD, CircleShape)
+            .alpha(if (enabled) 1f else 0.55f)
             .then(if (enabled) Modifier.bounceClick(onClick = onRoll) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.fillMaxSize().padding(10.dp)) {
-            val pip = size.minDimension * 0.15f
-            val third = size.width / 3f
-            fun dot(cx: Float, cy: Float) = drawCircle(Color(0xFF222222), pip, Offset(cx, cy))
-            val lo = third * 0.5f
-            val mid = third * 1.5f
-            val hi = third * 2.5f
-            when (face) {
-                1 -> dot(mid, mid)
-                2 -> { dot(lo, lo); dot(hi, hi) }
-                3 -> { dot(lo, lo); dot(mid, mid); dot(hi, hi) }
-                4 -> { dot(lo, lo); dot(hi, lo); dot(lo, hi); dot(hi, hi) }
-                5 -> { dot(lo, lo); dot(hi, lo); dot(mid, mid); dot(lo, hi); dot(hi, hi) }
-                else -> { dot(lo, lo); dot(hi, lo); dot(lo, mid); dot(hi, mid); dot(lo, hi); dot(hi, hi) }
+        Box(
+            Modifier.size(46.dp).clip(RoundedCornerShape(12.dp)).background(Color.White),
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(Modifier.size(46.dp).padding(8.dp)) {
+                val pip = size.minDimension * 0.15f
+                val third = size.width / 3f
+                fun dot(dx: Float, dy: Float) = drawCircle(Color(0xFF222222), pip, Offset(dx, dy))
+                val lo = third * 0.5f
+                val mid = third * 1.5f
+                val hi = third * 2.5f
+                when (face) {
+                    1 -> dot(mid, mid)
+                    2 -> { dot(lo, lo); dot(hi, hi) }
+                    3 -> { dot(lo, lo); dot(mid, mid); dot(hi, hi) }
+                    4 -> { dot(lo, lo); dot(hi, lo); dot(lo, hi); dot(hi, hi) }
+                    5 -> { dot(lo, lo); dot(hi, lo); dot(mid, mid); dot(lo, hi); dot(hi, hi) }
+                    else -> { dot(lo, lo); dot(hi, lo); dot(lo, mid); dot(hi, mid); dot(lo, hi); dot(hi, hi) }
+                }
             }
         }
     }

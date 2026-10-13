@@ -340,6 +340,8 @@
     <string name="ludo_outcome_lost">Lost</string>
 
     <string name="ludo_tap_to_roll">Your turn — tap the die to roll</string>
+    <string name="ludo_your_turn">%1$s — your turn, tap to roll</string>
+    <string name="ludo_roll_dice">Roll Dice</string>
     <string name="ludo_rolling">Rolling…</string>
     <string name="ludo_tap_piece">Tap a highlighted piece to move</string>
     <string name="ludo_thinking">Thinking…</string>

@@ -28,7 +28,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp as lerpF
-import com.miniplay.app.core.ui.theme.MiniPlayTheme
 import kotlinx.coroutines.flow.SharedFlow
 import kotlin.math.cos
 import kotlin.math.sin
@@ -59,7 +58,7 @@ fun LudoBoardView(
     modifier: Modifier = Modifier,
 ) {
     val game = state.game ?: return
-    val boardColor = MiniPlayTheme.colors.surfaceSunken
+    val boardColor = LudoColors.boardBackdrop
     val reduced = state.settings.reducedEffects
 
     BoxWithConstraints(modifier) {
@@ -140,6 +139,7 @@ fun LudoBoardView(
             drawYards(c)
             drawTrack(c)
             drawHomeColumns(c)
+            drawArrows(c)
             drawCenter(c)
 
             // Tokens — group by resting cell for stack offsets; skip the animating one.
@@ -198,20 +198,64 @@ private fun DrawScope.drawYards(c: Float) {
     for ((color, origin) in corners) {
         val tl = Offset(origin.x * c, origin.y * c)
         val sz = Size(6 * c, 6 * c)
+        // Outer colour block with a subtle dark rim for a raised look.
+        drawRoundRect(LudoColors.dark(color), Offset(tl.x, tl.y + c * 0.08f), sz, CornerRadius(c * 0.6f))
         drawRoundRect(LudoColors.of(color), tl, sz, CornerRadius(c * 0.6f))
-        // Inner white pocket.
-        val pad = c * 0.9f
+        // Inner light pocket.
+        val pad = c * 0.85f
         drawRoundRect(
-            Color.White,
+            LudoColors.light(color),
             Offset(tl.x + pad, tl.y + pad),
             Size(sz.width - pad * 2, sz.height - pad * 2),
             CornerRadius(c * 0.5f),
         )
-        // Four home slots.
+        // Four home slots (recessed circles).
         LudoBoard.yardSlots.getValue(color).forEach { slot ->
-            drawCircle(LudoColors.tint(color), c * 0.42f, Offset((slot.x + 0.5f) * c, (slot.y + 0.5f) * c))
+            val center = Offset((slot.x + 0.5f) * c, (slot.y + 0.5f) * c)
+            drawCircle(Color.White, c * 0.46f, center)
+            drawCircle(LudoColors.tint(color), c * 0.46f, center)
+            drawCircle(LudoColors.of(color).copy(alpha = 0.5f), c * 0.46f, center, style = Stroke(width = c * 0.05f))
         }
     }
+}
+
+/** The four coloured home-entry arrows at the arm tips, pointing outward. */
+private fun DrawScope.drawArrows(c: Float) {
+    arrow(Offset(7.5f * c, 0.5f * c), ArrowDir.UP, LudoColors.green, c)
+    arrow(Offset(7.5f * c, 14.5f * c), ArrowDir.DOWN, LudoColors.blue, c)
+    arrow(Offset(0.5f * c, 7.5f * c), ArrowDir.LEFT, LudoColors.red, c)
+    arrow(Offset(14.5f * c, 7.5f * c), ArrowDir.RIGHT, LudoColors.yellow, c)
+}
+
+private enum class ArrowDir { UP, DOWN, LEFT, RIGHT }
+
+private fun DrawScope.arrow(center: Offset, dir: ArrowDir, color: Color, c: Float) {
+    val s = c * 0.3f
+    val path = Path()
+    when (dir) {
+        ArrowDir.UP -> {
+            path.moveTo(center.x, center.y - s)
+            path.lineTo(center.x + s * 0.85f, center.y + s * 0.6f)
+            path.lineTo(center.x - s * 0.85f, center.y + s * 0.6f)
+        }
+        ArrowDir.DOWN -> {
+            path.moveTo(center.x, center.y + s)
+            path.lineTo(center.x + s * 0.85f, center.y - s * 0.6f)
+            path.lineTo(center.x - s * 0.85f, center.y - s * 0.6f)
+        }
+        ArrowDir.LEFT -> {
+            path.moveTo(center.x - s, center.y)
+            path.lineTo(center.x + s * 0.6f, center.y + s * 0.85f)
+            path.lineTo(center.x + s * 0.6f, center.y - s * 0.85f)
+        }
+        ArrowDir.RIGHT -> {
+            path.moveTo(center.x + s, center.y)
+            path.lineTo(center.x - s * 0.6f, center.y + s * 0.85f)
+            path.lineTo(center.x - s * 0.6f, center.y - s * 0.85f)
+        }
+    }
+    path.close()
+    drawPath(path, color)
 }
 
 private fun DrawScope.drawTrack(c: Float) {
@@ -274,14 +318,41 @@ private fun DrawScope.drawStar(center: Offset, radius: Float, color: Color) {
     drawPath(path, color.copy(alpha = 0.5f), style = Stroke(width = radius * 0.22f))
 }
 
-private fun DrawScope.drawToken(center: Offset, color: Color, dark: Color, radius: Float, legal: Boolean, pulse: Float) {
+/** Draws a glossy 3D-ish Ludo pawn centred at [center] ([r] ~ half a cell). */
+private fun DrawScope.drawToken(center: Offset, color: Color, dark: Color, r: Float, legal: Boolean, pulse: Float) {
+    val cx = center.x
+    val cy = center.y
     if (legal) {
-        drawCircle(color.copy(alpha = 0.35f), radius + radius * (0.5f + pulse * 0.4f), center)
+        drawCircle(color.copy(alpha = 0.30f + pulse * 0.25f), r * (1.3f + pulse * 0.35f), center)
     }
-    drawCircle(dark, radius * 1.08f, center)
-    drawCircle(color, radius, center)
-    drawCircle(Color.White.copy(alpha = 0.55f), radius * 0.26f, center + Offset(-radius * 0.28f, -radius * 0.3f))
-    drawCircle(dark.copy(alpha = 0.7f), radius * 0.4f, center, style = Stroke(width = radius * 0.1f))
+    // Ground shadow.
+    drawOval(Color.Black.copy(alpha = 0.18f), Offset(cx - r * 0.6f, cy + r * 0.55f), Size(r * 1.2f, r * 0.38f))
+    // Base disc.
+    drawOval(dark, Offset(cx - r * 0.6f, cy + r * 0.38f), Size(r * 1.2f, r * 0.4f))
+    drawOval(color, Offset(cx - r * 0.55f, cy + r * 0.33f), Size(r * 1.1f, r * 0.36f))
+    // Body (bell shape from base up to the neck).
+    val body = Path().apply {
+        moveTo(cx - r * 0.5f, cy + r * 0.48f)
+        cubicTo(cx - r * 0.46f, cy + r * 0.02f, cx - r * 0.3f, cy - r * 0.12f, cx - r * 0.24f, cy - r * 0.38f)
+        lineTo(cx + r * 0.24f, cy - r * 0.38f)
+        cubicTo(cx + r * 0.3f, cy - r * 0.12f, cx + r * 0.46f, cy + r * 0.02f, cx + r * 0.5f, cy + r * 0.48f)
+        close()
+    }
+    drawPath(body, dark)
+    val bodyInner = Path().apply {
+        moveTo(cx - r * 0.4f, cy + r * 0.44f)
+        cubicTo(cx - r * 0.36f, cy + r * 0.02f, cx - r * 0.24f, cy - r * 0.1f, cx - r * 0.18f, cy - r * 0.34f)
+        lineTo(cx + r * 0.18f, cy - r * 0.34f)
+        cubicTo(cx + r * 0.24f, cy - r * 0.1f, cx + r * 0.36f, cy + r * 0.02f, cx + r * 0.4f, cy + r * 0.44f)
+        close()
+    }
+    drawPath(bodyInner, color)
+    // Head.
+    val headC = Offset(cx, cy - r * 0.58f)
+    drawCircle(dark, r * 0.46f, headC)
+    drawCircle(color, r * 0.4f, headC)
+    // Gloss highlight.
+    drawCircle(Color.White.copy(alpha = 0.55f), r * 0.14f, Offset(cx - r * 0.13f, cy - r * 0.7f))
 }
 
 // ---------------------------- position helpers ----------------------------
