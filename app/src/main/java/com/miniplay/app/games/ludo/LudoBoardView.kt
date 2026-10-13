@@ -2,6 +2,7 @@ package com.miniplay.app.games.ludo
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,8 +31,8 @@ import androidx.compose.ui.util.lerp as lerpF
 import com.miniplay.app.core.ui.theme.MiniPlayTheme
 import kotlinx.coroutines.flow.SharedFlow
 import kotlin.math.cos
-import kotlin.math.hypot
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 private class LudoParticle(var x: Float, var y: Float, var vx: Float, var vy: Float, var life: Float, val maxLife: Float, val color: Color)
 
@@ -362,13 +363,18 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectTa
     legalCenters: () -> List<Pair<Int, Offset>>,
     onHit: (Int) -> Unit,
 ) {
-    androidx.compose.foundation.gestures.detectTapGestures { pos ->
+    detectTapGestures { pos ->
         val centers = legalCenters()
         var best = -1
         var bestDist = cell * 0.9f
         centers.forEach { (idx, center) ->
-            val d = hypot(pos.x - center.x, pos.y - center.y)
-            if (d < bestDist) { bestDist = d; best = idx }
+            val dx = pos.x - center.x
+            val dy = pos.y - center.y
+            val d = sqrt(dx * dx + dy * dy)
+            if (d < bestDist) {
+                bestDist = d
+                best = idx
+            }
         }
         if (best >= 0) onHit(best)
     }
