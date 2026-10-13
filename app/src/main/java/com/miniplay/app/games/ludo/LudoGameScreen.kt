@@ -1,9 +1,15 @@
 package com.miniplay.app.games.ludo
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -38,11 +44,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -261,40 +269,81 @@ private fun colorNameRes(color: LudoColor): Int = when (color) {
 
 @Composable
 private fun DiceButton(face: Int, rolling: Boolean, enabled: Boolean, color: Color, onRoll: () -> Unit) {
-    val scale by animateFloatAsState(if (enabled && !rolling) 1.07f else 1f, label = "dieScale")
-    val rotation by animateFloatAsState(if (rolling) 22f else 0f, label = "dieRot")
+    val infinite = rememberInfiniteTransition(label = "dice")
+    val spin by infinite.animateFloat(
+        0f, 360f,
+        infiniteRepeatable(tween(420, easing = LinearEasing), RepeatMode.Restart),
+        label = "spin",
+    )
+    val tilt by infinite.animateFloat(
+        -16f, 16f,
+        infiniteRepeatable(tween(150, easing = LinearEasing), RepeatMode.Reverse),
+        label = "tilt",
+    )
+    // Bounce/pop when a roll settles.
+    val pop by animateFloatAsState(
+        if (rolling) 1.14f else if (enabled) 1.06f else 1f,
+        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "pop",
+    )
     Box(
         Modifier
-            .size(78.dp)
-            .scale(scale)
-            .rotate(rotation)
+            .size(80.dp)
+            .graphicsLayer {
+                if (rolling) {
+                    rotationZ = spin
+                    rotationX = tilt
+                }
+                scaleX = pop
+                scaleY = pop
+                cameraDistance = 16f * density
+            }
             .clip(CircleShape)
-            .background(Brush.radialGradient(listOf(Color(0xFFE23B3B), Color(0xFF9B1C2B))))
+            .background(Brush.radialGradient(listOf(Color(0xFFF46D6D), Color(0xFFB71C1C))))
             .border(3.dp, GOLD, CircleShape)
-            .alpha(if (enabled) 1f else 0.55f)
+            .alpha(if (enabled) 1f else 0.6f)
             .then(if (enabled) Modifier.bounceClick(onClick = onRoll) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            Modifier.size(46.dp).clip(RoundedCornerShape(12.dp)).background(Color.White),
-            contentAlignment = Alignment.Center,
-        ) {
-            Canvas(Modifier.size(46.dp).padding(8.dp)) {
-                val pip = size.minDimension * 0.15f
-                val third = size.width / 3f
-                fun dot(dx: Float, dy: Float) = drawCircle(Color(0xFF222222), pip, Offset(dx, dy))
-                val lo = third * 0.5f
-                val mid = third * 1.5f
-                val hi = third * 2.5f
-                when (face) {
-                    1 -> dot(mid, mid)
-                    2 -> { dot(lo, lo); dot(hi, hi) }
-                    3 -> { dot(lo, lo); dot(mid, mid); dot(hi, hi) }
-                    4 -> { dot(lo, lo); dot(hi, lo); dot(lo, hi); dot(hi, hi) }
-                    5 -> { dot(lo, lo); dot(hi, lo); dot(mid, mid); dot(lo, hi); dot(hi, hi) }
-                    else -> { dot(lo, lo); dot(hi, lo); dot(lo, mid); dot(hi, mid); dot(lo, hi); dot(hi, hi) }
-                }
-            }
+        DieFace(face, Modifier.size(50.dp))
+    }
+}
+
+/** A 3D-looking die face: beveled ivory cube with raised, shaded pips. */
+@Composable
+private fun DieFace(face: Int, modifier: Modifier) {
+    Canvas(modifier) {
+        val s = size.minDimension
+        val m = s * 0.06f
+        val faceW = s - m * 2
+        val corner = CornerRadius(s * 0.2f)
+        // Drop shadow.
+        drawRoundRect(Color(0x55000000), topLeft = Offset(m + s * 0.03f, m + s * 0.05f), size = Size(faceW, faceW), cornerRadius = corner)
+        // Ivory face with a top-light gradient.
+        drawRoundRect(
+            Brush.verticalGradient(listOf(Color(0xFFFFFFFF), Color(0xFFDFE0E6)), startY = m, endY = m + faceW),
+            topLeft = Offset(m, m), size = Size(faceW, faceW), cornerRadius = corner,
+        )
+        // Top-left highlight bevel.
+        drawRoundRect(Color(0x55FFFFFF), topLeft = Offset(m, m), size = Size(faceW, faceW), cornerRadius = corner, style = Stroke(width = s * 0.05f))
+
+        val third = faceW / 3f
+        val lo = m + third * 0.5f
+        val mid = m + third * 1.5f
+        val hi = m + third * 2.5f
+        val r = faceW * 0.1f
+        fun pip(cx: Float, cy: Float) {
+            drawCircle(Color(0x44000000), r * 1.05f, Offset(cx + r * 0.1f, cy + r * 0.18f)) // recess shadow
+            drawCircle(Color(0xFF2B2B2B), r, Offset(cx, cy))
+            drawCircle(Color(0x66FFFFFF), r * 0.34f, Offset(cx - r * 0.3f, cy - r * 0.3f)) // highlight
+        }
+        when (face) {
+            1 -> pip(mid, mid)
+            2 -> { pip(lo, lo); pip(hi, hi) }
+            3 -> { pip(lo, lo); pip(mid, mid); pip(hi, hi) }
+            4 -> { pip(lo, lo); pip(hi, lo); pip(lo, hi); pip(hi, hi) }
+            5 -> { pip(lo, lo); pip(hi, lo); pip(mid, mid); pip(lo, hi); pip(hi, hi) }
+            else -> { pip(lo, lo); pip(hi, lo); pip(lo, mid); pip(hi, mid); pip(lo, hi); pip(hi, hi) }
         }
     }
 }

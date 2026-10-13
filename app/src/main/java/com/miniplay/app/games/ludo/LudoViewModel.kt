@@ -256,11 +256,13 @@ class LudoViewModel(
         try {
             val reduced = _uiState.value.settings.reducedEffects
             _uiState.update { it.copy(diceRolling = true) }
-            val frames = if (reduced) 4 else 9
+            // One dice-rattle for the whole roll (no per-frame beeping).
+            soundManager.play(SoundEffect.DICE_ROLL)
+            hapticManager.perform(HapticFeedbackType.MEDIUM)
+            val frames = if (reduced) 6 else 11
             repeat(frames) {
                 _uiState.update { it.copy(diceFace = Random.nextInt(1, 7)) }
-                soundManager.play(SoundEffect.CLICK)
-                delay(if (reduced) 45 else 55)
+                delay(if (reduced) 45 else 48)
             }
             val value = dice.roll()
             _uiState.update { it.copy(diceFace = value, diceRolling = false) }
