@@ -355,4 +355,55 @@
     <string name="ludo_menu">Menu</string>
     <string name="ludo_winner">%1$s wins!</string>
     <string name="ludo_play_again">Play again</string>
+
+    <!-- Shared -->
+    <string name="game_cancel">Cancel</string>
+
+    <!-- Ragdoll Archers -->
+    <string name="archers_title">Ragdoll Archers</string>
+    <string name="archers_desc">Physics archery duels — aim, judge the arc, and topple your rival.</string>
+    <string name="archers_tagline">Drag to aim. Release to loose. Topple your rival!</string>
+    <string name="archers_how_to">Drag anywhere and pull back like a slingshot — the further you pull, the more power. A dotted line previews the arc; release to loose the arrow. Gravity curves every shot, so aim high for distance. Headshots hurt most, then the body, then limbs. Drain your opponent\'s health to win. Take turns — you can\'t shoot while the arrow is flying or it\'s the opponent\'s turn.</string>
+
+    <string name="archers_mode_play">Play</string>
+    <string name="archers_quick_match">Quick Match vs Computer</string>
+    <string name="archers_difficulty">Difficulty</string>
+    <string name="archers_practice">Practice Range</string>
+    <string name="archers_practice_desc">Unlimited shots at a dummy — learn the arc.</string>
+
+    <string name="archers_settings_title">Settings</string>
+    <string name="archers_screen_shake">Screen shake</string>
+    <string name="archers_reduced_effects">Reduced effects</string>
+
+    <string name="archers_stats_title">Your stats</string>
+    <string name="archers_stat_played">Played</string>
+    <string name="archers_stat_wins">Wins</string>
+    <string name="archers_stat_winrate">Win rate</string>
+    <string name="archers_stat_streak">Best streak</string>
+    <string name="archers_reset">Reset progress</string>
+    <string name="archers_reset_confirm">Reset</string>
+    <string name="archers_reset_body">This clears your Ragdoll Archers wins, losses and streaks. It can\'t be undone. Other games are unaffected.</string>
+
+    <string name="archers_you">You</string>
+    <string name="archers_cpu">Computer</string>
+    <string name="archers_target">Target</string>
+    <string name="archers_aim_hint">Drag to aim, release to shoot</string>
+    <string name="archers_practice_hint">Practice — drag to aim, release to shoot</string>
+    <string name="archers_opponent_turn">Opponent\'s turn</string>
+    <string name="archers_opponent_aiming">Opponent is aiming…</string>
+    <string name="archers_arrow_flying">Arrow in flight…</string>
+
+    <string name="archers_tutorial_title">How to shoot</string>
+    <string name="archers_tutorial_body">Drag anywhere and pull back to aim — further = more power. The dotted arc shows where the arrow will go. Release to loose. Aim for the head!</string>
+    <string name="archers_got_it">Got it</string>
+
+    <string name="archers_paused">Paused</string>
+    <string name="archers_resume">Resume</string>
+    <string name="archers_restart">Restart</string>
+    <string name="archers_menu">Menu</string>
+    <string name="archers_victory">Victory!</string>
+    <string name="archers_defeat">Defeated</string>
+    <string name="archers_streak">Streak %1$d · Best %2$d</string>
+    <string name="archers_play_again">Play again</string>
+    <string name="archers_change_difficulty">Change difficulty</string>
 </resources>

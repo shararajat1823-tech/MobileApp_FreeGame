@@ -38,6 +38,7 @@ import com.miniplay.app.domain.repository.StreakRepository
 import com.miniplay.app.domain.repository.UserRepository
 import com.miniplay.app.domain.usecase.RecordGameResultUseCase
 import com.miniplay.app.games.brickbreaker.BrickBreakerDescriptor
+import com.miniplay.app.games.archers.ArchersDescriptor
 import com.miniplay.app.games.game2048.Game2048Descriptor
 import com.miniplay.app.games.ludo.LudoDescriptor
 import com.miniplay.app.games.memorymatch.MemoryMatchDescriptor
@@ -84,6 +85,7 @@ class AppContainer(context: Context) {
             SnakeDescriptor,
             MinesweeperDescriptor,
             LudoDescriptor,
+            ArchersDescriptor,
         ),
     )
 
@@ -124,6 +126,9 @@ class AppContainer(context: Context) {
 
     /** Ludo-local settings, stats, match history and saved-match (does not touch the global schema). */
     val ludoPrefs = com.miniplay.app.games.ludo.LudoPrefs(dataStore)
+
+    /** Ragdoll Archers-local settings + stats (does not touch the global schema). */
+    val archerPrefs = com.miniplay.app.games.archers.ArcherPrefs(dataStore)
 
     // --- Use cases ---
     val recordGameResult: RecordGameResultUseCase = RecordGameResultUseCase(
