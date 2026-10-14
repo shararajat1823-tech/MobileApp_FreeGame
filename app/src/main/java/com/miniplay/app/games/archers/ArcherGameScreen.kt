@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -105,14 +106,14 @@ fun ArcherGameScreen(
                 )
             }
 
-            Box(Modifier.fillMaxWidth().weight(1f).padding(6.dp)) {
+            Box(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 4.dp, vertical = 6.dp)) {
                 ArcherBoardView(
                     state = state,
                     match = match,
                     onFrame = onFrame,
                     onAim = onAim,
                     onRelease = onRelease,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)),
                 )
                 // Power meter while aiming.
                 if (state.aiming) {
@@ -120,14 +121,19 @@ fun ArcherGameScreen(
                 }
             }
 
-            // Prompt.
-            Text(
-                text = prompt(state),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            )
+            // Prompt (kept clear of the system nav bar).
+            Box(
+                Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = prompt(state),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
 
         TutorialOverlay(visible = state.showTutorial && state.winner == null, onDismiss = onDismissTutorial)
