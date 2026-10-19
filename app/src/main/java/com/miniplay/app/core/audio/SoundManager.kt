@@ -24,6 +24,9 @@ interface SoundManager {
      */
     fun playMerge(value: Int) {}
 
+    /** A short soft "tap" for a game piece hopping one cell (e.g. Ludo tokens). */
+    fun playMove() {}
+
     fun setEnabled(enabled: Boolean)
     fun release()
 }
@@ -50,8 +53,12 @@ class ToneSoundManager : SoundManager {
     @Volatile
     private var mergeTrack: AudioTrack? = null
 
+    @Volatile
+    private var moveTrack: AudioTrack? = null
+
     private val diceBuffer: ShortArray by lazy { buildDiceRattle() }
     private val mergeBuffer: ShortArray by lazy { buildMergeChime() }
+    private val moveBuffer: ShortArray by lazy { buildMoveTick() }
 
     override fun setEnabled(enabled: Boolean) {
         this.enabled.set(enabled)
@@ -84,6 +91,16 @@ class ToneSoundManager : SoundManager {
         }
     }
 
+    override fun playMove() {
+        if (!enabled.get()) return
+        val track = obtainMoveTrack() ?: return
+        runCatching {
+            if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.stop()
+            track.reloadStaticData()
+            track.play()
+        }
+    }
+
     override fun release() {
         synchronized(lock) {
             runCatching { generator?.release() }
@@ -92,6 +109,8 @@ class ToneSoundManager : SoundManager {
             diceTrack = null
             runCatching { mergeTrack?.release() }
             mergeTrack = null
+            runCatching { moveTrack?.release() }
+            moveTrack = null
         }
     }
 
@@ -197,6 +216,37 @@ class ToneSoundManager : SoundManager {
         var max = 0f
         for (v in out) if (abs(v) > max) max = abs(v)
         val gain = if (max > 0f) 0.85f / max else 1f
+        return ShortArray(n) { (out[it] * gain * Short.MAX_VALUE).toInt().coerceIn(-32768, 32767).toShort() }
+    }
+
+    // ------------------------------ move tick ------------------------------
+
+    private fun obtainMoveTrack(): AudioTrack? {
+        moveTrack?.let { return it }
+        return synchronized(lock) {
+            moveTrack ?: runCatching { createStaticTrack(moveBuffer) }.getOrNull()?.also { moveTrack = it }
+        }
+    }
+
+    /** A short, soft "tok" — a low sine with a snappy noise transient. */
+    private fun buildMoveTick(): ShortArray {
+        val durMs = 60
+        val n = SAMPLE_RATE * durMs / 1000
+        val out = FloatArray(n)
+        val rnd = java.util.Random(99L)
+        val f0 = 200.0
+        val twoPi = 2.0 * Math.PI
+        for (i in 0 until n) {
+            val t = i.toDouble() / SAMPLE_RATE
+            val toneEnv = exp(-24.0 * t)
+            val noiseEnv = exp(-90.0 * t)
+            val tone = sin(twoPi * f0 * t) * 0.6 * toneEnv
+            val noise = (rnd.nextFloat() * 2f - 1f) * 0.4f * noiseEnv.toFloat()
+            out[i] = (tone.toFloat() + noise)
+        }
+        var max = 0f
+        for (v in out) if (abs(v) > max) max = abs(v)
+        val gain = if (max > 0f) 0.7f / max else 1f
         return ShortArray(n) { (out[it] * gain * Short.MAX_VALUE).toInt().coerceIn(-32768, 32767).toShort() }
     }
 

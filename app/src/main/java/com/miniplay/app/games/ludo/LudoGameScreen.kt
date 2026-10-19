@@ -49,6 +49,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
@@ -106,13 +107,13 @@ fun LudoGameScreen(
                 }
             }
 
-            // Top players: Red (left), Green (right).
+            // Top players: Red (left), Green (right) — each with its own dice.
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                PlayerPanel(state, LudoColor.RED, Modifier.weight(1f))
-                PlayerPanel(state, LudoColor.GREEN, Modifier.weight(1f))
+                PlayerPanel(state, LudoColor.RED, onRoll, Modifier.weight(1f))
+                PlayerPanel(state, LudoColor.GREEN, onRoll, Modifier.weight(1f))
             }
 
             // Board inside a raised frame.
@@ -135,41 +136,24 @@ fun LudoGameScreen(
                 }
             }
 
-            // Bottom players: Blue (left), Yellow (right).
+            // Bottom players: Blue (left), Yellow (right) — each with its own dice.
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                PlayerPanel(state, LudoColor.BLUE, Modifier.weight(1f))
-                PlayerPanel(state, LudoColor.YELLOW, Modifier.weight(1f))
+                PlayerPanel(state, LudoColor.BLUE, onRoll, Modifier.weight(1f))
+                PlayerPanel(state, LudoColor.YELLOW, onRoll, Modifier.weight(1f))
             }
 
-            // Bottom dice bar.
-            Column(
-                Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    turnPrompt(state),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f),
-                    textAlign = TextAlign.Center,
-                )
-                DiceButton(
-                    face = state.diceFace,
-                    rolling = state.diceRolling,
-                    enabled = state.canRoll,
-                    color = LudoColors.of(game.currentColor),
-                    onRoll = onRoll,
-                )
-                Text(
-                    stringResource(R.string.ludo_roll_dice),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (state.canRoll) Color.White else Color.White.copy(alpha = 0.5f),
-                )
-            }
+            // Slim turn prompt — the dice now live in each player's panel.
+            Text(
+                turnPrompt(state),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White.copy(alpha = 0.9f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(vertical = 12.dp),
+            )
         }
 
         TutorialOverlay(visible = state.showTutorial && state.winner == null, onDismiss = onDismissTutorial)
@@ -192,7 +176,7 @@ private fun CircleButton(onClick: () -> Unit, enabled: Boolean = true, content: 
 }
 
 @Composable
-private fun PlayerPanel(state: LudoUiState, color: LudoColor, modifier: Modifier = Modifier) {
+private fun PlayerPanel(state: LudoUiState, color: LudoColor, onRoll: () -> Unit, modifier: Modifier = Modifier) {
     val game = state.game ?: return
     val active = color in game.players
     val isCurrent = active && color == game.currentColor && state.winner == null
@@ -242,6 +226,20 @@ private fun PlayerPanel(state: LudoUiState, color: LudoColor, modifier: Modifier
                 }
             }
         }
+        // Each player's own dice sits beside their home — only the current
+        // player's is bright and animated, and only a human's is tappable.
+        if (active) {
+            Spacer(Modifier.size(6.dp))
+            PanelDice(
+                face = if (isCurrent) state.diceFace else 1,
+                rolling = isCurrent && state.diceRolling,
+                active = isCurrent,
+                enabled = isCurrent && state.canRoll,
+                color = LudoColors.of(color),
+                darkColor = LudoColors.dark(color),
+                onRoll = onRoll,
+            )
+        }
     }
 }
 
@@ -267,8 +265,21 @@ private fun colorNameRes(color: LudoColor): Int = when (color) {
     LudoColor.BLUE -> R.string.ludo_color_blue
 }
 
+/**
+ * A compact per-player die shown inside a [PlayerPanel]. The current player's
+ * die is bright, gold-ringed and (for a human) pulses to invite a tap and
+ * tumbles while rolling; idle players' dice rest dimmed at 1.
+ */
 @Composable
-private fun DiceButton(face: Int, rolling: Boolean, enabled: Boolean, color: Color, onRoll: () -> Unit) {
+private fun PanelDice(
+    face: Int,
+    rolling: Boolean,
+    active: Boolean,
+    enabled: Boolean,
+    color: Color,
+    darkColor: Color,
+    onRoll: () -> Unit,
+) {
     val infinite = rememberInfiniteTransition(label = "dice")
     val spin by infinite.animateFloat(
         0f, 360f,
@@ -280,32 +291,43 @@ private fun DiceButton(face: Int, rolling: Boolean, enabled: Boolean, color: Col
         infiniteRepeatable(tween(150, easing = LinearEasing), RepeatMode.Reverse),
         label = "tilt",
     )
+    // A gentle breathing pulse invites the current human to tap their die.
+    val pulse by infinite.animateFloat(
+        1f, 1.12f,
+        infiniteRepeatable(tween(640, easing = LinearEasing), RepeatMode.Reverse),
+        label = "pulse",
+    )
     // Bounce/pop when a roll settles.
     val pop by animateFloatAsState(
-        if (rolling) 1.14f else if (enabled) 1.06f else 1f,
+        if (rolling) 1.18f else 1f,
         spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "pop",
     )
+    val scale = pop * if (enabled && !rolling) pulse else 1f
     Box(
         Modifier
-            .size(80.dp)
+            .size(46.dp)
             .graphicsLayer {
                 if (rolling) {
                     rotationZ = spin
                     rotationX = tilt
                 }
-                scaleX = pop
-                scaleY = pop
+                scaleX = scale
+                scaleY = scale
                 cameraDistance = 16f * density
             }
-            .clip(CircleShape)
-            .background(Brush.radialGradient(listOf(Color(0xFFF46D6D), Color(0xFFB71C1C))))
-            .border(3.dp, GOLD, CircleShape)
-            .alpha(if (enabled) 1f else 0.6f)
+            .clip(RoundedCornerShape(11.dp))
+            .background(Brush.radialGradient(listOf(lerp(color, Color.White, 0.30f), darkColor)))
+            .border(
+                if (active) 2.5.dp else 1.5.dp,
+                if (active) GOLD else Color.White.copy(alpha = 0.45f),
+                RoundedCornerShape(11.dp),
+            )
+            .alpha(if (active) 1f else 0.5f)
             .then(if (enabled) Modifier.bounceClick(onClick = onRoll) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        DieFace(face, Modifier.size(50.dp))
+        DieFace(face, Modifier.size(32.dp))
     }
 }
 

@@ -77,6 +77,9 @@ class LudoViewModel(
     private var tokensHomeThisMatch = 0
     private var startedAt = 0L
 
+    /** Rolls since each colour last saw a 6, for the anti-frustration "pity 6" rule. */
+    private val noSixStreak = HashMap<LudoColor, Int>()
+
     init {
         viewModelScope.launch { prefs.observeSettings().collect { s -> _uiState.update { it.copy(settings = s) } } }
         viewModelScope.launch { prefs.observeStats().collect { s -> _uiState.update { it.copy(stats = s) } } }
@@ -264,7 +267,14 @@ class LudoViewModel(
                 _uiState.update { it.copy(diceFace = Random.nextInt(1, 7)) }
                 delay(if (reduced) 45 else 48)
             }
-            val value = dice.roll()
+            // Pity-6: if this colour has gone PITY_THRESHOLD rolls without a 6,
+            // force a 6 so no player gets stuck (as in Ludo King).
+            val color = game.currentColor
+            var value = dice.roll()
+            val streak = noSixStreak[color] ?: 0
+            if (streak >= PITY_THRESHOLD) value = 6
+            noSixStreak[color] = if (value == 6) 0 else streak + 1
+
             _uiState.update { it.copy(diceFace = value, diceRolling = false) }
             hapticManager.perform(HapticFeedbackType.TICK)
 
@@ -319,7 +329,13 @@ class LudoViewModel(
 
             val steps = if (event.enteredBoard) 1 else (event.toProgress - event.fromProgress).coerceAtLeast(1)
             val perStep = if (reduced) 45L else 85L
-            delay(120 + steps * perStep)
+            // Play a soft "hop" for each cell the token steps through, in sync with the board.
+            delay(120)
+            repeat(steps) {
+                soundManager.playMove()
+                hapticManager.perform(HapticFeedbackType.TICK)
+                delay(perStep)
+            }
             _uiState.update { it.copy(animating = false) }
 
             when {
@@ -331,10 +347,7 @@ class LudoViewModel(
                     soundManager.play(SoundEffect.CORRECT)
                     hapticManager.perform(HapticFeedbackType.SUCCESS)
                 }
-                else -> {
-                    soundManager.play(SoundEffect.CARD_FLIP)
-                    hapticManager.perform(HapticFeedbackType.LIGHT)
-                }
+                // Otherwise the per-step hop taps are the move feedback.
             }
 
             if (next.isOver) {
@@ -391,10 +404,13 @@ class LudoViewModel(
         capturesThisMatch = 0
         tokensHomeThisMatch = 0
         startedAt = System.currentTimeMillis()
+        noSixStreak.clear()
     }
 
     private companion object {
         const val BOT_THINK_MS = 650L
         const val AUTO_MOVE_MS = 350L
+        /** Force a 6 once a colour has rolled this many times without one. */
+        const val PITY_THRESHOLD = 5
     }
 }
