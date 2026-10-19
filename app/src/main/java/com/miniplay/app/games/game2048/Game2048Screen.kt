@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -281,15 +282,31 @@ private fun TileCell(tile: Tile, cell: Dp, boardPadding: Dp, gap: Dp) {
     val x = animateDpAsState(targetX, tween(Motion.Duration.medium, easing = Motion.emphasized), label = "tileX")
     val y = animateDpAsState(targetY, tween(Motion.Duration.medium, easing = Motion.emphasized), label = "tileY")
 
-    // Pop freshly spawned/merged tiles once, keyed to their (fresh) id.
-    val isNew = tile.spawnedThisMove || tile.mergedThisMove
-    val scale = remember(tile.id) { Animatable(if (isNew) 0.6f else 1f) }
+    // Spawned tiles grow in; merged tiles "pop" with a springy overshoot + flash.
+    val isSpawn = tile.spawnedThisMove
+    val isMerge = tile.mergedThisMove
+    val scale = remember(tile.id) { Animatable(if (isSpawn) 0.3f else 1f) }
+    val flash = remember(tile.id) { Animatable(0f) }
     LaunchedEffect(tile.id) {
-        if (isNew) {
-            scale.snapTo(0.6f)
-            scale.animateTo(1f, Motion.tactileSpring())
+        when {
+            isMerge -> {
+                scale.snapTo(1f)
+                scale.animateTo(1.22f, tween(100, easing = Motion.emphasized))
+                scale.animateTo(1f, Motion.tactileSpring())
+            }
+            isSpawn -> {
+                scale.snapTo(0.3f)
+                scale.animateTo(1f, Motion.tactileSpring())
+            }
+            else -> scale.snapTo(1f)
+        }
+    }
+    LaunchedEffect(tile.id) {
+        if (isMerge) {
+            flash.snapTo(0.6f)
+            flash.animateTo(0f, tween(420, easing = Motion.emphasized))
         } else {
-            scale.snapTo(1f)
+            flash.snapTo(0f)
         }
     }
 
@@ -303,7 +320,12 @@ private fun TileCell(tile: Tile, cell: Dp, boardPadding: Dp, gap: Dp) {
                 scaleY = scale.value
             }
             .clip(RoundedCornerShape(10.dp))
-            .background(background),
+            .background(background)
+            // Soft highlight flash on merge (read in the draw phase — no recomposition).
+            .drawWithContent {
+                drawContent()
+                if (flash.value > 0.01f) drawRect(Color.White, alpha = flash.value)
+            },
         contentAlignment = Alignment.Center,
     ) {
         Text(

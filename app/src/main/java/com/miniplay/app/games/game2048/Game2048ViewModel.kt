@@ -79,9 +79,15 @@ class Game2048ViewModel(
         previousState = current
         madeAMove = true
 
-        soundManager.play(SoundEffect.CLICK)
-        if (next.score > current.score) soundManager.play(SoundEffect.CORRECT)
-        hapticManager.perform(HapticFeedbackType.TICK)
+        // The biggest tile created by a merge this move drives the chime pitch.
+        val mergedValue = next.tiles.filter { it.mergedThisMove }.maxOfOrNull { it.value } ?: 0
+        if (mergedValue > 0) {
+            soundManager.playMerge(mergedValue)
+            hapticManager.perform(HapticFeedbackType.LIGHT)
+        } else {
+            soundManager.play(SoundEffect.CLICK)
+            hapticManager.perform(HapticFeedbackType.TICK)
+        }
 
         val reachedWin = next.won && !celebratedWin
         _uiState.update {

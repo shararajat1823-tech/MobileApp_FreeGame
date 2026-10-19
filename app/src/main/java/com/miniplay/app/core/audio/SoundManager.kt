@@ -8,12 +8,22 @@ import android.media.ToneGenerator
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import kotlin.math.exp
+import kotlin.math.log2
+import kotlin.math.sin
 
 /** The set of feedback cues games can trigger. */
 enum class SoundEffect { CLICK, CARD_FLIP, CORRECT, WRONG, WIN, GAME_OVER, ACHIEVEMENT, DICE_ROLL }
 
 interface SoundManager {
     fun play(effect: SoundEffect)
+
+    /**
+     * A soft, pleasant merge chime whose pitch rises with the merged tile
+     * [value] (e.g. for 2048) — satisfying and "attractive" without an asset.
+     * Default no-op so non-audio implementations need not override it.
+     */
+    fun playMerge(value: Int) {}
+
     fun setEnabled(enabled: Boolean)
     fun release()
 }
@@ -37,7 +47,11 @@ class ToneSoundManager : SoundManager {
     @Volatile
     private var diceTrack: AudioTrack? = null
 
+    @Volatile
+    private var mergeTrack: AudioTrack? = null
+
     private val diceBuffer: ShortArray by lazy { buildDiceRattle() }
+    private val mergeBuffer: ShortArray by lazy { buildMergeChime() }
 
     override fun setEnabled(enabled: Boolean) {
         this.enabled.set(enabled)
@@ -54,12 +68,30 @@ class ToneSoundManager : SoundManager {
         runCatching { gen.startTone(tone, durationMs) }
     }
 
+    override fun playMerge(value: Int) {
+        if (!enabled.get()) return
+        val track = obtainMergeTrack() ?: return
+        runCatching {
+            // Each doubling raises the pitch two semitones, capped at two octaves.
+            val steps = (log2(value.coerceAtLeast(2).toDouble()).toInt() - 1).coerceAtLeast(0)
+            val semitones = (steps * 2).coerceAtMost(24)
+            val mult = Math.pow(2.0, semitones / 12.0)
+            val rate = (SAMPLE_RATE * mult).toInt().coerceIn(8000, 48000)
+            if (track.playState == AudioTrack.PLAYSTATE_PLAYING) track.stop()
+            track.reloadStaticData()
+            track.playbackRate = rate
+            track.play()
+        }
+    }
+
     override fun release() {
         synchronized(lock) {
             runCatching { generator?.release() }
             generator = null
             runCatching { diceTrack?.release() }
             diceTrack = null
+            runCatching { mergeTrack?.release() }
+            mergeTrack = null
         }
     }
 
@@ -103,28 +135,7 @@ class ToneSoundManager : SoundManager {
         }
     }
 
-    private fun createDiceTrack(): AudioTrack {
-        val buf = diceBuffer
-        val track = AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_GAME)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build(),
-            )
-            .setAudioFormat(
-                AudioFormat.Builder()
-                    .setSampleRate(SAMPLE_RATE)
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .build(),
-            )
-            .setBufferSizeInBytes(buf.size * 2)
-            .setTransferMode(AudioTrack.MODE_STATIC)
-            .build()
-        track.write(buf, 0, buf.size)
-        return track
-    }
+    private fun createDiceTrack(): AudioTrack = createStaticTrack(diceBuffer)
 
     /** Synthesizes ~0.5s of dice-knock noise: several decaying noise bursts. */
     private fun buildDiceRattle(): ShortArray {
@@ -157,6 +168,58 @@ class ToneSoundManager : SoundManager {
         for (v in out) if (abs(v) > max) max = abs(v)
         val gain = if (max > 0f) 0.9f / max else 1f
         return ShortArray(n) { (out[it] * gain * Short.MAX_VALUE).toInt().coerceIn(-32768, 32767).toShort() }
+    }
+
+    // ------------------------------ merge chime ------------------------------
+
+    private fun obtainMergeTrack(): AudioTrack? {
+        mergeTrack?.let { return it }
+        return synchronized(lock) {
+            mergeTrack ?: runCatching { createStaticTrack(mergeBuffer) }.getOrNull()?.also { mergeTrack = it }
+        }
+    }
+
+    /** A soft two-harmonic "pluck" with a quick attack and exponential decay. */
+    private fun buildMergeChime(): ShortArray {
+        val durMs = 260
+        val n = SAMPLE_RATE * durMs / 1000
+        val out = FloatArray(n)
+        val f0 = 523.25 // C5
+        val twoPi = 2.0 * Math.PI
+        val durSec = durMs / 1000.0
+        for (i in 0 until n) {
+            val t = i.toDouble() / SAMPLE_RATE
+            val env = exp(-5.0 * t / durSec)
+            val attack = (t / 0.004).coerceAtMost(1.0) // 4ms fade-in
+            val s = sin(twoPi * f0 * t) * 0.6 + sin(twoPi * 2 * f0 * t) * 0.25 + sin(twoPi * 3 * f0 * t) * 0.12
+            out[i] = (s * env * attack).toFloat()
+        }
+        var max = 0f
+        for (v in out) if (abs(v) > max) max = abs(v)
+        val gain = if (max > 0f) 0.85f / max else 1f
+        return ShortArray(n) { (out[it] * gain * Short.MAX_VALUE).toInt().coerceIn(-32768, 32767).toShort() }
+    }
+
+    private fun createStaticTrack(buf: ShortArray): AudioTrack {
+        val track = AudioTrack.Builder()
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build(),
+            )
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setSampleRate(SAMPLE_RATE)
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .build(),
+            )
+            .setBufferSizeInBytes(buf.size * 2)
+            .setTransferMode(AudioTrack.MODE_STATIC)
+            .build()
+        track.write(buf, 0, buf.size)
+        return track
     }
 
     private companion object {
