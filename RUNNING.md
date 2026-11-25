@@ -82,7 +82,7 @@ This runs the exact build that CI produced — no project sync required.
 
 ## Running the games' unit tests
 
-The game rules (Snake, Ludo, Minesweeper, Ragdoll Archers physics/AI, etc.) are
+The game rules (Snake, Ludo, Minesweeper, etc.) are
 pure Kotlin and covered by unit tests:
 
 ```bash

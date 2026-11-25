@@ -16,5 +16,4 @@ object GameIds {
     const val SNAKE = "snake"
     const val MINESWEEPER = "minesweeper"
     const val LUDO = "ludo"
-    const val ARCHERS = "archers"
 }
